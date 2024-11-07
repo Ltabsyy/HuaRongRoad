@@ -17,10 +17,10 @@ color_t color[19] = {
 	SPRINGGREEN,//c3
 	LIGHTSKYBLUE,//r4
 	DEEPSKYBLUE,//c4
-	ORCHID,//r5
-	DARKORCHID,//c5
-	PLUM,//r6
-	MEDIUMPURPLE,//c6
+	MEDIUMORCHID,//r5
+	BLUEVIOLET,//c5
+	VIOLET,//r6
+	LIGHTMAGENTA,//c6
 	TAN,//r7
 	SIENNA,//c7
 	DARKGRAY,//r8
@@ -41,6 +41,13 @@ int Color(int n)
 	if(r == c) return 2*r+1;
 	else if(r < c) return 2*r+1;
 	else return 2*c+2;
+	//return 2*r+2;
+}
+
+int RightNumber(int r, int c)
+{
+	if(r == difficulty-1 && c == difficulty-1) return 0;
+	else return r*difficulty+c+1;;
 }
 
 void DrawSelection()
@@ -66,9 +73,8 @@ void DrawBoard()
 	{
 		for(c=0; c<difficulty; c++)
 		{
-			//if(r == diffculty-1 && c == diffculty-1) n = 0;
-			//else n = r*diffculty+c+1;
 			n = board[r][c];
+			//n = RightNumber(r, c);
 			if(Color(n) < 9 || Color(n) > 16) setcolor(BLACK);
 			else setcolor(WHITE);
 			setfillcolor(color[Color(n)]);
@@ -109,31 +115,93 @@ void InitWindow()
 	setbkmode(TRANSPARENT);
 	ege_enable_aa(true);
 }
-
+/*
+int IsSolvable()
+{
+	int r1, c1, r2, c2, n = 0;
+	//A Chopin_Wang算法
+	for(r1=0; r1<difficulty; r1++)
+	{
+		for(c1=0; c1<difficulty; c1++)
+		{
+			if(board[r1][c1] == 0) continue;
+			for(r2=0; r2<=r1; r2++)
+			{
+				for(c2=0; c2<difficulty; c2++)
+				{
+					if(r1 == r2 && c1 == c2) break;
+					if(board[r1][c1] < board[r2][c2]) n++;
+				}
+			}
+		}
+	}
+	if(difficulty % 2 == 1) return n%2 == 0;//偶排列可解
+	else return n%2 != rZero%2;//r从0开始
+	//B 丢丢hamburger算法
+	for(r1=0; r1<difficulty; r1++)
+	{
+		for(c1=0; c1<difficulty; c1++)
+		{
+			if(board[r1][c1] == 0) continue;
+			for(r2=0; r2<=r1; r2++)
+			{
+				for(c2=0; c2<difficulty; c2++)
+				{
+					if(r1 == r2 && c1 == c2) break;
+					if(board[r1][c1] < board[r2][c2] || board[r2][c2] == 0)
+					{
+						n++;
+					}
+				}
+			}
+		}
+	}
+	//return n%2 == (2*difficulty-2-rZero-cZero)%2;
+	return n%2 == (rZero+cZero)%2;
+}
+*/
 void InitBoard()
 {
 	int r, c, n;
 	srand(time(0));
+	//while(1)
+	{
+		for(r=0; r<difficulty; r++)
+		{
+			for(c=0; c<difficulty; c++)
+			{
+				board[r][c] = -1;
+			}
+		}
+		rZero = rand() % difficulty;
+		cZero = rand() % difficulty;
+		board[rZero][cZero] = 0;
+		for(n=1; n<difficulty*difficulty; )
+		{
+			r = rand() % difficulty;
+			c = rand() % difficulty;
+			if(board[r][c] == -1)
+			{
+				board[r][c] = n;
+				n++;
+			}
+		}
+		//if(IsSolvable()) break;//判断可解性
+	}
+}
+
+int CheckEnd()
+{
+	int r, c;
 	for(r=0; r<difficulty; r++)
 	{
 		for(c=0; c<difficulty; c++)
 		{
-			board[r][c] = -1;
+			if((r == difficulty-2 && c == difficulty-1) || (r == difficulty-1 && c == difficulty-2));
+			else if(board[r][c] != RightNumber(r, c)) return 0;
 		}
 	}
-	rZero = rand() % difficulty;
-	cZero = rand() % difficulty;
-	board[rZero][cZero] = 0;
-	for(n=1; n<difficulty*difficulty; )
-	{
-		r = rand() % difficulty;
-		c = rand() % difficulty;
-		if(board[r][c] == -1)
-		{
-			board[r][c] = n;
-			n++;
-		}
-	}
+	return 1;
 }
 
 void Move(int rt, int ct)//移动空白块到目标位置
@@ -185,7 +253,8 @@ void Move(int rt, int ct)//移动空白块到目标位置
 
 int main()
 {
-	int r, c;
+	int r, c, t0, t1;
+	int isMoving = 0, isMoved = 0, isEnd = 0;
 	mouse_msg mouseMsg;
 	key_msg keyMsg;
 	/*选择难度*/
@@ -241,17 +310,20 @@ int main()
 	InitBoard();
 	resizewindow(sideLength*difficulty, sideLength*difficulty);
 	DrawBoard();
+	t0 = clock();
 	while(1)
 	{
 		while(mousemsg())
 		{
 			mouseMsg = getmouse();
-			if(mouseMsg.is_down())//移动
+			if(mouseMsg.is_up()) isMoving = 0;
+			if(mouseMsg.is_down() || (mouseMsg.is_move() && isMoving == 1))//移动
 			{
 				r = mouseMsg.y / sideLength;
 				c = mouseMsg.x / sideLength;
 				Move(r, c);
-				DrawBoard();
+				isMoving = 1;
+				isMoved = 1;
 			}
 			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
 			{
@@ -265,13 +337,39 @@ int main()
 		while(kbmsg())
 		{
 			keyMsg = getkey();
-			if(keyMsg.msg == key_msg_down)//移动
+			if(keyMsg.msg == key_msg_down//移动
+				&& (keyMsg.key == 'W' || keyMsg.key == 'A' || keyMsg.key == 'S' || keyMsg.key == 'D'))
 			{
 				if(keyMsg.key == 'W') Move(rZero-1, cZero);
 				else if(keyMsg.key == 'A') Move(rZero, cZero-1);
 				else if(keyMsg.key == 'S') Move(rZero+1, cZero);
 				else if(keyMsg.key == 'D') Move(rZero, cZero+1);
-				DrawBoard();
+				isMoved = 1;
+			}
+		}
+		if(isMoved == 1)
+		{
+			DrawBoard();
+			isMoved = 0;
+			if(isEnd == 1 || CheckEnd() == 1)
+			{
+				//游戏结束时显示用时，并且可以继续移动，归位时总显示第一次用时，调整显示大小后用时消失
+				if(isEnd == 0)
+				{
+					t1 = clock();
+					isEnd = 1;
+					delay_ms(1000);
+				}
+				if(CheckEnd() == 1)
+				{
+					setfont(sideLength*7/16, 0, "Consolas");
+					//xyprintf(cZero*sideLength, rZero*sideLength, "Time", t1-t0);
+					if((t1-t0)/1000 >= 1000) xyprintf(cZero*sideLength+sideLength/16, rZero*sideLength+sideLength*5/16, "%d", (t1-t0+500)/1000);
+					else if((t1-t0)/1000 >= 100) xyprintf(cZero*sideLength+sideLength*3/16, rZero*sideLength+sideLength*5/16, "%d", (t1-t0+500)/1000);
+					else if((t1-t0)/1000 >= 10) xyprintf(cZero*sideLength+sideLength/16, rZero*sideLength+sideLength*5/16, "%.1f", (float)(t1-t0)/1000);
+					else xyprintf(cZero*sideLength+sideLength/16, rZero*sideLength+sideLength*5/16, "%.2f", (float)(t1-t0)/1000);
+					setfont(sideLength*7/8, 0, "Consolas");
+				}
 			}
 		}
 		delay_ms(50);
@@ -290,4 +388,9 @@ HuaRongRoad 0.2
 ——新增 Ctrl+滚轮调整显示大小
 ——优化 移动在鼠标任意键按下时触发
 ——优化 仅在移动后刷新界面
+HuaRongRoad 0.3
+——新增 滑动操作(鼠标按下过程中持续触发移动)
+——新增 胜利时显示用时
+——优化 调整紫色和粉色区分
+//——新增 使用丢丢hamburger算法维持可解性
 --------------------------------*/
