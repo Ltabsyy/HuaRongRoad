@@ -4,8 +4,13 @@
 
 int difficulty = 10;
 int sideLength = 96;
-int board[10][10];
+int** board = 0;
 int rZero, cZero;
+
+#define heightOfChar sideLength*7/8//sideLength*7/16
+#define xOfChar sideLength/12
+#define dxOfChar heightOfChar/4//数字每缺一位时的向右偏移量
+#define yOfChar sideLength/16//sideLength*9/32
 
 color_t color[19] = {
 	WHITE,//0
@@ -38,10 +43,10 @@ int Color(int n)
 	c = n % difficulty;
 	//0 r1 c1 r2 c2
 	//0  1  2  3  4
-	if(r == c) return 2*r+1;
-	else if(r < c) return 2*r+1;
-	else return 2*c+2;
-	//return 2*r+2;
+	if(r == c) return 2*r%18+1;
+	else if(r < c) return 2*r%18+1;
+	else return 2*c%18+2;
+	//return 2*r%18+2;
 }
 
 int RightNumber(int r, int c)
@@ -61,8 +66,8 @@ void DrawSelection()
 		else setcolor(BLACK);
 		setfillcolor(color[(n-2)*2]);
 		ege_fillrect(c*sideLength, r*sideLength, sideLength, sideLength);
-		if(n < 10) xyprintf(c*sideLength+sideLength/12+sideLength*7/32, r*sideLength+sideLength/16, "%d", n);
-		else xyprintf(c*sideLength+sideLength/12, r*sideLength+sideLength/16, "%d", n);
+		if(n < 10) xyprintf(c*sideLength+xOfChar+dxOfChar, r*sideLength+yOfChar, "%d", n);
+		else xyprintf(c*sideLength+xOfChar, r*sideLength+yOfChar, "%d", n);
 	}
 }
 
@@ -80,8 +85,8 @@ void DrawBoard()
 			setfillcolor(color[Color(n)]);
 			ege_fillrect(c*sideLength, r*sideLength, sideLength, sideLength);
 			if(n == 0);
-			else if(n < 10) xyprintf(c*sideLength+sideLength/12+sideLength*7/32, r*sideLength+sideLength/16, "%d", n);
-			else xyprintf(c*sideLength+sideLength/12, r*sideLength+sideLength/16, "%d", n);
+			else if(n < 10) xyprintf(c*sideLength+xOfChar+dxOfChar, r*sideLength+yOfChar, "%d", n);
+			else xyprintf(c*sideLength+xOfChar, r*sideLength+yOfChar, "%d", n);
 		}
 	}
 }
@@ -105,39 +110,39 @@ void InitWindow()
 	else if(screenHeight >= 1440) sideLength = 128;
 	else if(screenHeight >= 1080) sideLength = 96;
 	else sideLength = 72;
+	while(sideLength*difficulty > screenWidth || sideLength*difficulty > screenHeight)
+	{
+		sideLength -= 8;
+	}
+	if(sideLength < 16) sideLength = 16;
 	setcaption("HuaRong Road");
 	SetProcessDPIAware();
 	//3 4 5 6
 	//7 8 9 10
 	initgraph(sideLength*4, sideLength*2, INIT_RENDERMANUAL);
 	setbkcolor(WHITE);
-	setfont(sideLength*7/8, 0, "Consolas");
+	setfont(heightOfChar, 0, "Consolas");
 	setbkmode(TRANSPARENT);
 	ege_enable_aa(true);
 }
-/*
-int IsSolvable()
+
+void Resize(char mode)//调整显示大小
+{
+	if(mode == '+')//16-48时每格调整8，192+时32
+	{
+		if(sideLength >= 192) sideLength += 32;
+		else sideLength += 8;
+	}
+	else if(mode == '-')
+	{
+		if(sideLength > 192) sideLength -= 32;
+		else if(sideLength > 16) sideLength -= 8;
+	}
+}
+
+int IsSolvable()//丢丢hamburger算法
 {
 	int r1, c1, r2, c2, n = 0;
-	//A Chopin_Wang算法
-	for(r1=0; r1<difficulty; r1++)
-	{
-		for(c1=0; c1<difficulty; c1++)
-		{
-			if(board[r1][c1] == 0) continue;
-			for(r2=0; r2<=r1; r2++)
-			{
-				for(c2=0; c2<difficulty; c2++)
-				{
-					if(r1 == r2 && c1 == c2) break;
-					if(board[r1][c1] < board[r2][c2]) n++;
-				}
-			}
-		}
-	}
-	if(difficulty % 2 == 1) return n%2 == 0;//偶排列可解
-	else return n%2 != rZero%2;//r从0开始
-	//B 丢丢hamburger算法
 	for(r1=0; r1<difficulty; r1++)
 	{
 		for(c1=0; c1<difficulty; c1++)
@@ -156,15 +161,14 @@ int IsSolvable()
 			}
 		}
 	}
-	//return n%2 == (2*difficulty-2-rZero-cZero)%2;
 	return n%2 == (rZero+cZero)%2;
 }
-*/
+
 void InitBoard()
 {
 	int r, c, n;
 	srand(time(0));
-	//while(1)
+	while(1)
 	{
 		for(r=0; r<difficulty; r++)
 		{
@@ -186,7 +190,7 @@ void InitBoard()
 				n++;
 			}
 		}
-		//if(IsSolvable()) break;//判断可解性
+		if(IsSolvable()) break;//判断可解性
 	}
 }
 
@@ -274,10 +278,10 @@ int main()
 			}
 			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
 			{
-				if(mouseMsg.wheel > 0) sideLength += 8;
-				else if(sideLength > 8) sideLength -= 8;
+				if(mouseMsg.wheel > 0) Resize('+');
+				else Resize('-');
 				resizewindow(sideLength*4, sideLength*2);
-				setfont(sideLength*7/8, 0, "Consolas");//更新字体大小
+				setfont(heightOfChar, 0, "Consolas");//更新字体大小
 				DrawSelection();
 			}
 		}
@@ -307,6 +311,11 @@ int main()
 		delay_ms(50);
 	}
 	/*游戏*/
+	board =(int**) calloc(difficulty, sizeof(int*));
+	for(r=0; r<difficulty; r++)
+	{
+		board[r] = (int*) calloc(difficulty, sizeof(int));
+	}
 	InitBoard();
 	resizewindow(sideLength*difficulty, sideLength*difficulty);
 	DrawBoard();
@@ -327,24 +336,33 @@ int main()
 			}
 			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
 			{
-				if(mouseMsg.wheel > 0) sideLength += 8;
-				else if(sideLength > 8) sideLength -= 8;
+				if(mouseMsg.wheel > 0) Resize('+');
+				else Resize('-');
 				resizewindow(sideLength*difficulty, sideLength*difficulty);
-				setfont(sideLength*7/8, 0, "Consolas");//更新字体大小
+				setfont(heightOfChar, 0, "Consolas");//更新字体大小
 				DrawBoard();
 			}
 		}
 		while(kbmsg())
 		{
 			keyMsg = getkey();
-			if(keyMsg.msg == key_msg_down//移动
-				&& (keyMsg.key == 'W' || keyMsg.key == 'A' || keyMsg.key == 'S' || keyMsg.key == 'D'))
+			if(keyMsg.msg == key_msg_down)//移动
 			{
-				if(keyMsg.key == 'W') Move(rZero-1, cZero);
-				else if(keyMsg.key == 'A') Move(rZero, cZero-1);
-				else if(keyMsg.key == 'S') Move(rZero+1, cZero);
-				else if(keyMsg.key == 'D') Move(rZero, cZero+1);
-				isMoved = 1;
+				if(keyMsg.key == 'W' || keyMsg.key == 'A' || keyMsg.key == 'S' || keyMsg.key == 'D')
+				{
+					if(keyMsg.key == 'W') Move(rZero-1, cZero);
+					else if(keyMsg.key == 'A') Move(rZero, cZero-1);
+					else if(keyMsg.key == 'S') Move(rZero+1, cZero);
+					else if(keyMsg.key == 'D') Move(rZero, cZero+1);
+					isMoved = 1;
+				}
+				if(keyMsg.key == 'R')
+				{
+					InitBoard();
+					DrawBoard();
+					t0 = clock();
+					isEnd = 0;
+				}
 			}
 		}
 		if(isMoved == 1)
@@ -362,19 +380,25 @@ int main()
 				}
 				if(CheckEnd() == 1)
 				{
-					setfont(sideLength*7/16, 0, "Consolas");
+					setfont(heightOfChar/2, 0, "Consolas");
 					//xyprintf(cZero*sideLength, rZero*sideLength, "Time", t1-t0);
-					if((t1-t0)/1000 >= 1000) xyprintf(cZero*sideLength+sideLength/16, rZero*sideLength+sideLength*5/16, "%d", (t1-t0+500)/1000);
-					else if((t1-t0)/1000 >= 100) xyprintf(cZero*sideLength+sideLength*3/16, rZero*sideLength+sideLength*5/16, "%d", (t1-t0+500)/1000);
-					else if((t1-t0)/1000 >= 10) xyprintf(cZero*sideLength+sideLength/16, rZero*sideLength+sideLength*5/16, "%.1f", (float)(t1-t0)/1000);
-					else xyprintf(cZero*sideLength+sideLength/16, rZero*sideLength+sideLength*5/16, "%.2f", (float)(t1-t0)/1000);
-					setfont(sideLength*7/8, 0, "Consolas");
+					if((t1-t0)/1000 >= 1000) xyprintf(cZero*sideLength+xOfChar, rZero*sideLength+yOfChar+dxOfChar, "%d", (t1-t0+500)/1000);
+					else if((t1-t0)/1000 >= 100) xyprintf(cZero*sideLength+xOfChar+dxOfChar/2, rZero*sideLength+yOfChar+dxOfChar, "%d", (t1-t0+500)/1000);
+					else if((t1-t0)/1000 >= 10) xyprintf(cZero*sideLength+xOfChar, rZero*sideLength+yOfChar+dxOfChar, "%.1f", (float)(t1-t0)/1000);
+					else xyprintf(cZero*sideLength+xOfChar, rZero*sideLength+yOfChar+dxOfChar, "%.2f", (float)(t1-t0)/1000);
+					setfont(heightOfChar, 0, "Consolas");
 				}
 			}
+			delay_ms(0);
 		}
-		delay_ms(50);
+		else delay_ms(50);
 	}
 	closegraph();
+	for(r=0; r<difficulty; r++)
+	{
+		free(board[r]);
+	}
+	free(board);
 	return 0;
 }
 
@@ -392,5 +416,12 @@ HuaRongRoad 0.3
 ——新增 滑动操作(鼠标按下过程中持续触发移动)
 ——新增 胜利时显示用时
 ——优化 调整紫色和粉色区分
-//——新增 使用丢丢hamburger算法维持可解性
+HuaRongRoad 0.4
+——新增 使用丢丢hamburger算法维持可解性
+——新增 按R重置
+——新增 使用动态内存分配
+——优化 显示大小采用部分非线性调整
+——优化 统一字体位置设计语言
+——优化 默认显示大小不超过屏幕大小
+——优化 移动后不再延时
 --------------------------------*/
