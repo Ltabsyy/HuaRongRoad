@@ -86,12 +86,19 @@ void DrawBoard()
 			ege_fillrect(c*sideLength, r*sideLength, sideLength, sideLength);
 			if(n == 0);
 			else if(n < 10) xyprintf(c*sideLength+xOfChar+dxOfChar, r*sideLength+yOfChar, "%d", n);
-			else xyprintf(c*sideLength+xOfChar, r*sideLength+yOfChar, "%d", n);
+			else if(n < 100) xyprintf(c*sideLength+xOfChar, r*sideLength+yOfChar, "%d", n);
+			else//设置难度鼠标在界外松开时可设置为超10阶华容
+			{
+				setfont(heightOfChar/2, 0, "Consolas");
+				if(n < 1000) xyprintf(c*sideLength+xOfChar+dxOfChar/2, r*sideLength+yOfChar+dxOfChar, "%d", n);
+				else xyprintf(c*sideLength+xOfChar, r*sideLength+yOfChar+dxOfChar, "%d", n);
+				setfont(heightOfChar, 0, "Consolas");
+			}
 		}
 	}
 }
 
-void InitWindow()
+void InitWindow(int mode)
 {
 	int screenHeight, screenWidth;
 	DEVMODE dm;
@@ -106,24 +113,32 @@ void InitWindow()
 		screenWidth = dm.dmPelsWidth;
 		screenHeight = dm.dmPelsHeight;
 	}
-	if(screenHeight >= 2160) sideLength = 192;
-	else if(screenHeight >= 1440) sideLength = 128;
-	else if(screenHeight >= 1080) sideLength = 96;
-	else sideLength = 72;
-	while(sideLength*difficulty > screenWidth || sideLength*difficulty > screenHeight)
+	if(mode == 0)
 	{
-		sideLength -= 8;
+		if(screenHeight >= 2160) sideLength = 192;
+		else if(screenHeight >= 1440) sideLength = 128;
+		else if(screenHeight >= 1080) sideLength = 96;
+		else sideLength = 72;
+		setcaption("HuaRong Road");
+		SetProcessDPIAware();
+		//3 4 5 6
+		//7 8 9 10
+		initgraph(sideLength*4, sideLength*2, INIT_RENDERMANUAL);
+		setbkcolor(WHITE);
+		setfont(heightOfChar, 0, "Consolas");
+		setbkmode(TRANSPARENT);
+		ege_enable_aa(true);
 	}
-	if(sideLength < 16) sideLength = 16;
-	setcaption("HuaRong Road");
-	SetProcessDPIAware();
-	//3 4 5 6
-	//7 8 9 10
-	initgraph(sideLength*4, sideLength*2, INIT_RENDERMANUAL);
-	setbkcolor(WHITE);
-	setfont(heightOfChar, 0, "Consolas");
-	setbkmode(TRANSPARENT);
-	ege_enable_aa(true);
+	else
+	{
+		while(sideLength*difficulty > screenWidth || sideLength*difficulty > screenHeight)
+		{
+			sideLength -= 8;
+		}
+		if(sideLength < 16) sideLength = 16;
+		resizewindow(sideLength*difficulty, sideLength*difficulty);
+		setfont(heightOfChar, 0, "Consolas");
+	}
 }
 
 void Resize(char mode)//调整显示大小
@@ -262,7 +277,7 @@ int main()
 	mouse_msg mouseMsg;
 	key_msg keyMsg;
 	/*选择难度*/
-	InitWindow();
+	InitWindow(0);
 	DrawSelection();
 	difficulty = 0;
 	while(difficulty == 0)
@@ -317,7 +332,7 @@ int main()
 		board[r] = (int*) calloc(difficulty, sizeof(int));
 	}
 	InitBoard();
-	resizewindow(sideLength*difficulty, sideLength*difficulty);
+	InitWindow(1);
 	DrawBoard();
 	t0 = clock();
 	while(1)
@@ -424,4 +439,7 @@ HuaRongRoad 0.4
 ——优化 统一字体位置设计语言
 ——优化 默认显示大小不超过屏幕大小
 ——优化 移动后不再延时
+HuaRongRoad 0.5
+——优化 设置难度鼠标在界外松开时的3位数以上数字显示
+——修复 不能正确的适配屏幕分辨率
 --------------------------------*/
