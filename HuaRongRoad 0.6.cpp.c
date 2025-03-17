@@ -468,6 +468,7 @@ int main()
 				}
 				if(CheckEnd() == 1)
 				{
+					setcolor(BLACK);
 					setfont(heightOfChar/2, 0, "Consolas");
 					//xyprintf(cZero*sideLength, rZero*sideLength, "Time", t1-t0);
 					if((t1-t0)/1000 >= 1000) xyprintf(cZero*sideLength+xOfChar, rZero*sideLength+yOfChar+dxOfChar, "%d", (t1-t0+500)/1000);
@@ -519,4 +520,5 @@ HuaRongRoad 0.6
 ——新增 CapsLk键亮起时鼠标直接触发移动，按下时不触发
 ——新增 按C切换着色风格
 ——优化 默认显示大小
+——修复 部分难度不显示用时
 --------------------------------*/
