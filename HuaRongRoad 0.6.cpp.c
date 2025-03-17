@@ -1,3 +1,4 @@
+//#define _WIN32_WINNT 0xa00//使用SetProcessDPIAware()
 #include <stdlib.h>
 #include <time.h>
 #include <graphics.h>
@@ -6,6 +7,7 @@ int difficulty = 10;
 int sideLength = 96;
 int** board = 0;
 int rZero, cZero;
+int colorStyle = 0;
 
 #define heightOfChar sideLength*7/8//sideLength*7/16
 #define xOfChar sideLength/12
@@ -34,19 +36,58 @@ color_t color[19] = {
 	LIGHTGRAY//c9
 };
 
-int Color(int n)
+void SetColor(int n)
 {
 	int r, c;
-	if(n == 0) return 0;
+	int fontColor, fillColor;
+	if(n == 0)
+	{
+		setfillcolor(color[0]);
+		return;
+	}
 	n--;
 	r = n / difficulty;
 	c = n % difficulty;
-	//0 r1 c1 r2 c2
-	//0  1  2  3  4
-	if(r == c) return 2*r%18+1;
-	else if(r < c) return 2*r%18+1;
-	else return 2*c%18+2;
-	//return 2*r%18+2;
+	//填充颜色
+	if(colorStyle == 0)//降阶
+	{
+		//0 r1 c1 r2 c2
+		//0  1  2  3  4
+		if(r == c) fillColor = 2*r%18+1;
+		else if(r < c) fillColor = 2*r%18+1;
+		else fillColor = 2*c%18+2;
+	}
+	else if(colorStyle == 1)//层先
+	{
+		fillColor = 2*r%18+2;
+	}
+	else//四分降阶
+	{
+		//16 15 黑 深
+		//18 17 浅 白
+		fillColor = 15+2*(r>=(difficulty+1)/2)+(c<(difficulty+1)/2);
+	}
+	//字体颜色
+	if(colorStyle == 2)
+	{
+		r %= (difficulty+1)/2;
+		c %= (difficulty+1)/2;
+		if(r == c) fontColor = 2*r%18+1;
+		else if(r < c) fontColor = 2*r%18+1;
+		else fontColor = 2*c%18+2;
+		if(fontColor == fillColor)
+		{
+			if(fillColor > 16) fontColor = 16;
+			else fontColor = 17;
+		}
+	}
+	else
+	{
+		if(fillColor < 9 || fillColor > 16) fontColor = 16;//黑
+		else fontColor = 0;//白
+	}
+	setcolor(color[fontColor]);
+	setfillcolor(color[fillColor]);
 }
 
 int RightNumber(int r, int c)
@@ -80,9 +121,7 @@ void DrawBoard()
 		{
 			n = board[r][c];
 			//n = RightNumber(r, c);
-			if(Color(n) < 9 || Color(n) > 16) setcolor(BLACK);
-			else setcolor(WHITE);
-			setfillcolor(color[Color(n)]);
+			SetColor(n);
 			ege_fillrect(c*sideLength, r*sideLength, sideLength, sideLength);
 			if(n == 0);
 			else if(n < 10) xyprintf(c*sideLength+xOfChar+dxOfChar, r*sideLength+yOfChar, "%d", n);
@@ -131,7 +170,7 @@ void InitWindow(int mode)
 	}
 	else
 	{
-		while(sideLength*difficulty > screenWidth || sideLength*difficulty > screenHeight)
+		while(sideLength*difficulty > screenWidth || sideLength*(difficulty+1) > screenHeight)
 		{
 			sideLength -= 8;
 		}
@@ -153,6 +192,16 @@ void Resize(char mode)//调整显示大小
 		if(sideLength > 192) sideLength -= 32;
 		else if(sideLength > 16) sideLength -= 8;
 	}
+}
+
+int CapsLk()
+{
+	BYTE lpKeyState[256];
+	if(GetKeyboardState(lpKeyState))
+	{
+		return lpKeyState[VK_CAPITAL];
+	}
+	else return 0;
 }
 
 int IsSolvable()//丢丢hamburger算法
@@ -274,6 +323,7 @@ int main()
 {
 	int r, c, t0, t1;
 	int isMoving = 0, isMoved = 0, isEnd = 0;
+	int moveLock = CapsLk();
 	mouse_msg mouseMsg;
 	key_msg keyMsg;
 	/*选择难度*/
@@ -321,6 +371,10 @@ int main()
 				{
 					difficulty = 3;
 				}
+				else if(keyMsg.key == key_capslock)
+				{
+					moveLock = !moveLock;
+				}
 			}
 		}
 		delay_ms(50);
@@ -334,14 +388,23 @@ int main()
 	InitBoard();
 	InitWindow(1);
 	DrawBoard();
+	isMoving = moveLock;
 	t0 = clock();
 	while(1)
 	{
 		while(mousemsg())
 		{
 			mouseMsg = getmouse();
-			if(mouseMsg.is_up()) isMoving = 0;
-			if(mouseMsg.is_down() || (mouseMsg.is_move() && isMoving == 1))//移动
+			if(moveLock)
+			{
+				if(mouseMsg.is_down()) isMoving = 0;
+				if(mouseMsg.is_up()) isMoving = 1;
+			}
+			else
+			{
+				if(mouseMsg.is_up()) isMoving = 0;
+			}
+			if((!moveLock && mouseMsg.is_down()) || (mouseMsg.is_move() && isMoving == 1))//移动
 			{
 				r = mouseMsg.y / sideLength;
 				c = mouseMsg.x / sideLength;
@@ -361,9 +424,9 @@ int main()
 		while(kbmsg())
 		{
 			keyMsg = getkey();
-			if(keyMsg.msg == key_msg_down)//移动
+			if(keyMsg.msg == key_msg_down)
 			{
-				if(keyMsg.key == 'W' || keyMsg.key == 'A' || keyMsg.key == 'S' || keyMsg.key == 'D')
+				if(keyMsg.key == 'W' || keyMsg.key == 'A' || keyMsg.key == 'S' || keyMsg.key == 'D')//移动
 				{
 					if(keyMsg.key == 'W') Move(rZero-1, cZero);
 					else if(keyMsg.key == 'A') Move(rZero, cZero-1);
@@ -371,12 +434,22 @@ int main()
 					else if(keyMsg.key == 'D') Move(rZero, cZero+1);
 					isMoved = 1;
 				}
-				if(keyMsg.key == 'R')
+				else if(keyMsg.key == 'R')
 				{
 					InitBoard();
 					DrawBoard();
 					t0 = clock();
 					isEnd = 0;
+				}
+				else if(keyMsg.key == key_capslock)
+				{
+					moveLock = !moveLock;
+					isMoving = moveLock;
+				}
+				else if(keyMsg.key == 'C')
+				{
+					colorStyle = (colorStyle+1)%3;
+					isMoved = 1;
 				}
 			}
 		}
@@ -442,4 +515,8 @@ HuaRongRoad 0.4
 HuaRongRoad 0.5
 ——优化 设置难度鼠标在界外松开时的3位数以上数字显示
 ——修复 不能正确的适配屏幕分辨率
+HuaRongRoad 0.6
+——新增 CapsLk键亮起时鼠标直接触发移动，按下时不触发
+——新增 按C切换着色风格
+——优化 默认显示大小
 --------------------------------*/
