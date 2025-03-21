@@ -1,4 +1,4 @@
-//#define _WIN32_WINNT 0xa00//使用SetProcessDPIAware()
+//#define _WIN32_WINNT 0x0600//使用SetProcessDPIAware()
 #include <stdlib.h>
 #include <time.h>
 #include <graphics.h>
@@ -40,6 +40,7 @@ void SetColor(int n)
 {
 	int r, c;
 	int fontColor, fillColor;
+	int halfDiff = (difficulty+1)/2;
 	if(n == 0)
 	{
 		setfillcolor(color[0]);
@@ -57,24 +58,33 @@ void SetColor(int n)
 		else if(r < c) fillColor = 2*r%18+1;
 		else fillColor = 2*c%18+2;
 	}
-	else if(colorStyle == 1)//层先
+	else if(colorStyle == 1)//按行
 	{
 		fillColor = 2*r%18+2;
 	}
-	else//四分降阶
+	else if(colorStyle == 2)//四分降阶
 	{
 		//16 15 黑 深
 		//18 17 浅 白
-		fillColor = 15+2*(r>=(difficulty+1)/2)+(c<(difficulty+1)/2);
+		fillColor = 15+2*(r>=halfDiff)+(c<halfDiff);
+	}
+	else//统一
+	{
+		fillColor = 7;
 	}
 	//字体颜色
 	if(colorStyle == 2)
 	{
-		r %= (difficulty+1)/2;
-		c %= (difficulty+1)/2;
+		r %= halfDiff;
+		c %= halfDiff;
 		if(r == c) fontColor = 2*r%18+1;
 		else if(r < c) fontColor = 2*r%18+1;
 		else fontColor = 2*c%18+2;
+		if(difficulty < 8)
+		{
+			if(fillColor == 15) fontColor = 2*r%18+1;
+			else if(fillColor == 18) fontColor = 2*c%18+2;
+		}
 		if(fontColor == fillColor)
 		{
 			if(fillColor > 16) fontColor = 16;
@@ -257,7 +267,124 @@ void InitBoard()
 		if(IsSolvable()) break;//判断可解性
 	}
 }
+/*
+int ManhattanDistance()//曼哈顿距离
+{
+	int r, c, n, d, sum = 0;
+	for(r=0; r<difficulty; r++)
+	{
+		for(c=0; c<difficulty; c++)
+		{
+			n = board[r][c];
+			if(n == 0) n = difficulty*difficulty-1;
+			else n--;
+			d = n/difficulty - r;
+			if(d < 0) d *= -1;
+			sum += d;
+			d = n%difficulty - c;
+			if(d < 0) d *= -1;
+			sum += d;
+		}
+	}
+	return sum;
+}
 
+int IsRestored(int r0, int c0)//根据着色风格判断方块已还原
+{
+	int r, c;
+	if(r0<0 || r0>=difficulty || c0<0 || c0>difficulty) return 1;
+	if(board[r0][c0] != RightNumber(r0, c0)) return 0;
+	if(colorStyle == 0)//降阶
+	{
+		//判断该层和之前层都被还原
+		if(r0 <= c0)
+		{
+			for(r=0; r<=r0; r++)
+			{
+				for(c=0; c<difficulty; c++)
+				{
+					if(board[r][c] != RightNumber(r, c)) return 0;
+				}
+			}
+			for(r=r0+1; r<difficulty; r++)
+			{
+				for(c=0; c<r0; c++)
+				{
+					if(board[r][c] != RightNumber(r, c)) return 0;
+				}
+			}
+		}
+		else
+		{
+			for(r=0; r<=c0; r++)
+			{
+				for(c=0; c<difficulty; c++)
+				{
+					if(board[r][c] != RightNumber(r, c)) return 0;
+				}
+			}
+			for(r=c0+1; r<difficulty; r++)
+			{
+				for(c=0; c<=c0; c++)
+				{
+					if(board[r][c] != RightNumber(r, c)) return 0;
+				}
+			}
+		}
+		return 1;
+	}
+	else if(colorStyle == 1)//按行
+	{
+		//判断该行和之前行都被还原
+		for(r=0; r<=r0; r++)
+		{
+			for(c=0; c<difficulty; c++)
+			{
+				if(board[r][c] != RightNumber(r, c)) return 0;
+			}
+		}
+		return 1;
+	}
+	else if(colorStyle == 2)//四分降阶
+	{
+		//判断该区和左上区都被还原
+		int halfDiff = (difficulty+1)/2;
+		if(r0 >= halfDiff && c0 >= halfDiff) return 0;//右下区必不被还原
+		for(r=0; r<halfDiff; r++)//左上区必定被判断
+		{
+			for(c=0; c<halfDiff; c++)
+			{
+				if(board[r][c] != RightNumber(r, c)) return 0;
+			}
+		}
+		if(r0 < halfDiff && c0 >= halfDiff)//判断右上区
+		{
+			for(r=0; r<halfDiff; r++)
+			{
+				for(c=halfDiff; c<difficulty; c++)
+				{
+					if(board[r][c] != RightNumber(r, c)) return 0;
+				}
+			}
+		}
+		if(r0 >= halfDiff && c0 < halfDiff)//判断左下区
+		{
+			for(r=halfDiff; r<difficulty; r++)
+			{
+				for(c=0; c<halfDiff; c++)
+				{
+					if(board[r][c] != RightNumber(r, c)) return 0;
+				}
+			}
+		}
+		return 1;
+	}
+	else//统一
+	{
+		return 0;
+	}
+}
+*/
 int CheckEnd()
 {
 	int r, c;
@@ -340,6 +467,8 @@ int main()
 				r = mouseMsg.y / sideLength;
 				c = mouseMsg.x / sideLength;
 				difficulty = 4*r+c+3;
+				if(difficulty < 0) difficulty = 0;
+				if(difficulty > 100) difficulty = 100;
 			}
 			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
 			{
@@ -408,7 +537,8 @@ int main()
 			{
 				r = mouseMsg.y / sideLength;
 				c = mouseMsg.x / sideLength;
-				Move(r, c);
+				/*if(mouseMsg.is_move() && isMoving == 1 && IsRestored(r, c));
+				else */Move(r, c);
 				isMoving = 1;
 				isMoved = 1;
 			}
@@ -448,7 +578,7 @@ int main()
 				}
 				else if(keyMsg.key == 'C')
 				{
-					colorStyle = (colorStyle+1)%3;
+					colorStyle = (colorStyle+1)%4;
 					isMoved = 1;
 				}
 			}
@@ -521,4 +651,12 @@ HuaRongRoad 0.6
 ——新增 按C切换着色风格
 ——优化 默认显示大小
 ——修复 部分难度不显示用时
+HuaRongRoad 0.7
+——新增 统一着色
+——优化 低难度的四分降阶着色
+——优化 限制难度最大为100
+——修复 设置难度鼠标在界外松开时可能闪退
+//——新增 曼哈顿距离
+//——新增 已还原方块的滑歪抵抗
+//——新增 斜线滑动优化
 --------------------------------*/
