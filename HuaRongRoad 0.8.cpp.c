@@ -30,10 +30,10 @@ color_t color[19] = {
 	LIGHTMAGENTA,//c6
 	TAN,//r7
 	SIENNA,//c7
-	DARKGRAY,//r8
-	BLACK,//c8
-	WHITE,//r9
-	LIGHTGRAY//c9
+	GRAY,//r8，深灰
+	BLACK,//c8，黑
+	WHITE,//r9，白
+	LIGHTGRAY,//c9，浅灰
 };
 
 void SetColor(int n)
@@ -66,6 +66,7 @@ void SetColor(int n)
 	{
 		//16 15 黑 深
 		//18 17 浅 白
+		//if(difficulty == 3) halfDiff--;
 		fillColor = 15+2*(r>=halfDiff)+(c<halfDiff);
 	}
 	else//统一
@@ -87,14 +88,14 @@ void SetColor(int n)
 		}
 		if(fontColor == fillColor)
 		{
-			if(fillColor > 16) fontColor = 16;
-			else fontColor = 17;
+			if(fillColor % 2 == 1) fontColor++;
+			else fontColor--;
 		}
 	}
 	else
 	{
 		if(fillColor < 9 || fillColor > 16) fontColor = 16;//黑
-		else fontColor = 0;//白
+		else fontColor = 17;//白
 	}
 	setcolor(color[fontColor]);
 	setfillcolor(color[fillColor]);
@@ -466,6 +467,8 @@ int main()
 			{
 				r = mouseMsg.y / sideLength;
 				c = mouseMsg.x / sideLength;
+				if(mouseMsg.y < 0) r--;
+				if(mouseMsg.x < 0) c--;
 				difficulty = 4*r+c+3;
 				if(difficulty < 0) difficulty = 0;
 				if(difficulty > 100) difficulty = 100;
@@ -656,6 +659,10 @@ HuaRongRoad 0.7
 ——优化 低难度的四分降阶着色
 ——优化 限制难度最大为100
 ——修复 设置难度鼠标在界外松开时可能闪退
+HuaRongRoad 0.8
+——优化 设置难度鼠标在界外松开与界内的统一性
+——优化 更明显的区分深灰和浅灰
+——优化 四分降阶着色对混淆层统一阶色
 //——新增 曼哈顿距离
 //——新增 已还原方块的滑歪抵抗
 //——新增 斜线滑动优化
