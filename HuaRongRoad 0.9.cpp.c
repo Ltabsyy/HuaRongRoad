@@ -33,7 +33,7 @@ color_t color[19] = {
 	GRAY,//r8，深灰
 	BLACK,//c8，黑
 	WHITE,//r9，白
-	LIGHTGRAY,//c9，浅灰
+	LIGHTGRAY//c9，浅灰
 };
 
 void SetColor(int n)
@@ -103,8 +103,7 @@ void SetColor(int n)
 
 int RightNumber(int r, int c)
 {
-	if(r == difficulty-1 && c == difficulty-1) return 0;
-	else return r*difficulty+c+1;;
+	return (r == difficulty-1 && c == difficulty-1) ? 0 : r*difficulty+c+1;
 }
 
 void DrawSelection()
@@ -114,8 +113,7 @@ void DrawSelection()
 	{
 		r = (n-3)/4;
 		c = (n-3)%4;
-		if(n == 10) setcolor(WHITE);
-		else setcolor(BLACK);
+		setcolor(n == 10 ? WHITE : BLACK);
 		setfillcolor(color[(n-2)*2]);
 		ege_fillrect(c*sideLength, r*sideLength, sideLength, sideLength);
 		if(n < 10) xyprintf(c*sideLength+xOfChar+dxOfChar, r*sideLength+yOfChar, "%d", n);
@@ -181,7 +179,7 @@ void InitWindow(int mode)
 	}
 	else
 	{
-		while(sideLength*difficulty > screenWidth || sideLength*(difficulty+1) > screenHeight)
+		while(sideLength*difficulty > screenWidth || sideLength*difficulty > screenHeight*10/11)
 		{
 			sideLength -= 8;
 		}
@@ -475,8 +473,7 @@ int main()
 			}
 			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
 			{
-				if(mouseMsg.wheel > 0) Resize('+');
-				else Resize('-');
+				Resize(mouseMsg.wheel > 0 ? '+' : '-');
 				resizewindow(sideLength*4, sideLength*2);
 				setfont(heightOfChar, 0, "Consolas");//更新字体大小
 				DrawSelection();
@@ -547,8 +544,7 @@ int main()
 			}
 			if(mouseMsg.is_wheel() && keystate(key_control))//调整显示大小
 			{
-				if(mouseMsg.wheel > 0) Resize('+');
-				else Resize('-');
+				Resize(mouseMsg.wheel > 0 ? '+' : '-');
 				resizewindow(sideLength*difficulty, sideLength*difficulty);
 				setfont(heightOfChar, 0, "Consolas");//更新字体大小
 				DrawBoard();
@@ -663,6 +659,8 @@ HuaRongRoad 0.8
 ——优化 设置难度鼠标在界外松开与界内的统一性
 ——优化 更明显的区分深灰和浅灰
 ——优化 四分降阶着色对混淆层统一阶色
+HuaRongRoad 0.9
+——优化 简化部分代码
 //——新增 曼哈顿距离
 //——新增 已还原方块的滑歪抵抗
 //——新增 斜线滑动优化
